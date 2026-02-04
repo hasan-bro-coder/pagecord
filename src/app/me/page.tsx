@@ -14,7 +14,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 
 export default function FriendsPage() {
   const router = useRouter();
-  
+
   const [userName, setUserName] = useState("");
   const [user, loader] = useAuthState(auth);
   const [chats, setChats] = useState<any[]>([]);
@@ -30,18 +30,15 @@ export default function FriendsPage() {
     }
   }, [user, loader]);
 
-
-
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    if (!user && !loader) {
-      router.push("/login");
-    } else {
-      setIsCheckingAuth(false);
-    }
-  });
-  return () => unsubscribe();
-}, [router,loader]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user && !loader) {
+        router.push("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, loader]);
   // useEffect(() => {
   //   const setupChatListener = async () => {
   //     if (!loader && user?.email) {
@@ -118,7 +115,7 @@ export default function FriendsPage() {
             <div className="mt-10 flex flex-col gap-5">
               {chats.map((msg, i) => (
                 <Link
-                href={"/chat/" + msg.id}
+                  href={"/chat/" + msg.id}
                   key={msg.id}
                   className="flex items-start gap-4 group hover:bg-[#2e3035] -mx-4 px-4 py-1 transition-colors"
                 >
@@ -135,15 +132,15 @@ export default function FriendsPage() {
                         {msg.username}
                       </span>
                       <span className="text-xs text-zinc-500">
-                        {msg.timestamp
-                          ?.toDate()
-                          .toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        {msg.timestamp?.toDate().toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
-                    <p className="text-[#dbdee1] leading-relaxed">{msg.message}</p>
+                    <p className="text-[#dbdee1] leading-relaxed">
+                      {msg.message}
+                    </p>
                   </div>
                 </Link>
 
@@ -163,10 +160,3 @@ export default function FriendsPage() {
     </>
   );
 }
-function callback(chatList: { id: string }[]) {
-  throw new Error("Function not implemented.");
-}
-function setIsCheckingAuth(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}
-

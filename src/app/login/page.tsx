@@ -58,7 +58,7 @@ export default function AuthPage() {
 
       router.push("/me");
     } catch (err: any) {
-      setError("Signup failed. Ensure you chose a Google account.");
+      setError("Signup failed. Ensure you chose a Google account." + err);
       setIsLoading(false);
     }
   };
@@ -81,7 +81,7 @@ export default function AuthPage() {
 
       router.push("/me");
     } catch (err) {
-      setError("Login failed.");
+      setError("Login failed. " + err);
       setIsLoading(false);
     }
   };

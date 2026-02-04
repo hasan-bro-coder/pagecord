@@ -45,7 +45,7 @@ export const makeChat = async (
   const userSnap = await getDocs(userQuery);
   if (userSnap.empty) return;
   let targetEmail = userSnap.docs[0].data().email;
-  const channelName = [currentEmail, targetUserName].sort().join("_");
+  const channelName = [await getUserName(currentEmail), targetUserName].sort().join("_");
   console.log(userQuery, userSnap, targetUserName, channelName);
   const chatRef = doc(db, "chats", channelName);
   await setDoc(
