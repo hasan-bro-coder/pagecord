@@ -2,11 +2,26 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { auth, db } from "@/lib/firebase";
-import { subscribeToMessages, sendMessage } from "@/lib/friends";
+import {
+  subscribeToMessages,
+  sendMessage,
+  uploadToCloudinary,
+  sendFile,
+  getOtherUser,
+} from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { SendHorizontal, Pencil, Trash2, Check, X, Pin } from "lucide-react";
+import {
+  SendHorizontal,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  Pin,
+  PlusCircle,
+  ArrowBigLeft,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import {
   deleteDoc,
@@ -17,7 +32,6 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import Navbar from "@/components/Navbar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   Dialog,
@@ -27,6 +41,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
+import Link from "next/link";
+import remarkGfm from "remark-gfm";
 
 export default function ChatInterface() {
   const router = useRouter();
@@ -155,6 +171,30 @@ export default function ChatInterface() {
     setEditingId(null);
   };
 
+  const YouTubeEmbed = ({ url }: { url: string }) => {
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+    const match = url.match(regExp);
+    const videoId = match && match[2].length === 11 ? match[2] : null;
+    //  = getYouTubeID(url);
+
+    if (!videoId) return null;
+
+    return (
+      <div className="my-2 max-w-[400px] w-full border border-white/10 rounded-xl overflow-hidden shadow-lg bg-black">
+        <div className="relative aspect-video">
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="YouTube video player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="absolute top-0 left-0 w-full h-full border-0"
+          />
+        </div>
+      </div>
+    );
+  };
+
   function groupMessage() {
     let lastSender: string = "";
     return messages.map((msg) => {
@@ -245,86 +285,104 @@ export default function ChatInterface() {
                 </div>
               </div>
             ) : (
-              <div className="text-[#dbdee1] leading-relaxed break-words overflow-hidden">
-                <ReactMarkdown
-                  components={{
-                    // Headers
-                    h1: ({ children }) => (
-                      <h1 className="text-xl font-bold border-b border-zinc-700 pb-1 mt-2 mb-1 text-white">
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2 className="text-lg font-bold mt-2 mb-1 text-white">
-                        {children}
-                      </h2>
-                    ),
-
-                    // Bold/Italic
-                    strong: ({ children }) => (
-                      <strong className="font-bold text-white">
-                        {children}
-                      </strong>
-                    ),
-                    em: ({ children }) => (
-                      <em className="italic">{children}</em>
-                    ),
-
-                    // Links
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#00a8fc] hover:underline"
-                      >
-                        {children}
-                      </a>
-                    ),
-
-                    // Lists
-                    ul: ({ children }) => (
-                      <ul className="list-disc ml-5 space-y-1 my-1">
-                        {children}
-                      </ul>
-                    ),
-                    ol: ({ children }) => (
-                      <ol className="list-decimal ml-5 space-y-1 my-1">
-                        {children}
-                      </ol>
-                    ),
-
-                    // Code Blocks
-                    code: ({
-                      node,
-                      inline,
-                      className,
-                      children,
-                      ...props
-                    }: any) => {
-                      return inline ? (
-                        <code
-                          className="bg-[#2e3035] px-1.2 rounded text-sm font-mono text-[#e3e5e8]"
-                          {...props}
-                        >
+              <>
+                <div className="text-[#dbdee1] leading-relaxed wrap-break-word overflow-hidden">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Headers
+                      h1: ({ children }) => (
+                        <h1 className="text-xl font-bold border-b border-zinc-700 pb-1 mt-2 mb-1 text-white">
                           {children}
-                        </code>
-                      ) : (
-                        <pre className="bg-[#1e1f22] p-3 rounded-md border border-black/20 my-2 overflow-x-auto">
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-lg font-bold mt-2 mb-1 text-white">
+                          {children}
+                        </h2>
+                      ),
+
+                      // Bold/Italic
+                      strong: ({ children }) => (
+                        <strong className="font-bold text-white">
+                          {children}
+                        </strong>
+                      ),
+                      em: ({ children }) => (
+                        <em className="italic">{children}</em>
+                      ),
+
+                      // Links
+                      a: ({ href, children }) => {
+                        const isYouTube =
+                          href?.includes("youtube.com") ||
+                          href?.includes("youtu.be");
+                        return (
+                          <>
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[#00a8fc] hover:underline"
+                            >
+                              {children}
+                            </a>
+                            {isYouTube && href && <YouTubeEmbed url={href} />}
+                          </>
+                        );
+                      },
+
+                      // Lists
+                      ul: ({ children }) => (
+                        <ul className="list-disc ml-5 space-y-1 my-1">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal ml-5 space-y-1 my-1">
+                          {children}
+                        </ol>
+                      ),
+
+                      // Code Blocks
+                      code: ({
+                        node,
+                        inline,
+                        className,
+                        children,
+                        ...props
+                      }: any) => {
+                        return inline ? (
                           <code
-                            className="text-sm font-mono text-[#dbdee1]"
+                            className="bg-[#2e3035] px-1.2 rounded text-sm font-mono text-[#e3e5e8]"
                             {...props}
                           >
                             {children}
                           </code>
-                        </pre>
-                      );
-                    },
-                  }}
-                >
-                  {msg.text}
-                </ReactMarkdown>
-              </div>
+                        ) : (
+                          <pre className="bg-[#1e1f22] p-3 rounded-md border border-black/20 my-2 overflow-x-auto">
+                            <code
+                              className="text-sm font-mono text-[#dbdee1]"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          </pre>
+                        );
+                      },
+                    }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
+                </div>
+                {msg.mediaUrl && (
+                  <img
+                    src={msg.mediaUrl}
+                    alt="image"
+                    className="max-w-[50vw] w-fit"
+                  />
+                )}
+              </>
             )}
           </div>
         </div>
@@ -349,9 +407,7 @@ export default function ChatInterface() {
       window.removeEventListener("blur", handleBlur);
     };
   }, []);
-
   const [pinnedMsg, setPinnedMsg] = useState<any>(null);
-
   // Fetch the pinned message in real-time
   useEffect(() => {
     const pinnedRef = doc(db, "chats", chatId, "pinnedMessage", "current");
@@ -379,31 +435,44 @@ export default function ChatInterface() {
     prevMsgCount.current = messages.length;
   }, [messages, isFocused, user?.username]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      // 1. Upload to Cloudinary
+      const media = await uploadToCloudinary(file);
+
+      await sendFile(chatId, newMessage, {
+        name: user.username,
+        photo: user.photoURL,
+        mediaUrl: media.url,
+        mediaId: media.publicId,
+      });
+      setNewMessage("");
+    } catch (error) {
+      console.error("Upload Error:", error);
+    }
+  };
   return (
     <>
-      <Navbar></Navbar>
-
-      <div className="flex flex-col h-screen bg-black text-[#dbdee1] ">
-        <ScrollArea className="flex-1 px-4 mt-15 bg-black pb-5">
-          <div className="py-6">
-            {groupMessage()}
-            <div ref={scrollRef} />
-          </div>
-        </ScrollArea>
-        {/* Input Bar */}
-        <div className="fixed bottom-0 w-screen">
-          <form
-            onSubmit={handleSend}
-            className="flex items-center gap-2 bg-[#111111] rounded-lg px-4 py-2 shadow-inner"
-          >
+      {/* <Navbar></Navbar> */}
+      <nav className="fixed top-0 w-full z-10 border-b border-white/10 bg-black/50 backdrop-blur-md">
+        <div className="mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex gap-4 items-center">
+            <Button>
+              <Link href="/me">
+                <ArrowBigLeft />
+              </Link>
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <button
+                <Button
                   type="button"
                   className="text-zinc-400 hover:text-zinc-200 transition-colors"
                 >
                   <Pin className="w-6 h-6" />
-                </button>
+                </Button>
               </DialogTrigger>
 
               <DialogContent className="bg-[#1e1f22] border-zinc-800 text-[#dbdee1] sm:max-w-106.25">
@@ -435,7 +504,6 @@ export default function ChatInterface() {
                         {pinnedMsg.text}
                       </p>
 
-                      {/* Optional: Button to unpin */}
                       <button
                         onClick={() =>
                           deleteDoc(
@@ -464,24 +532,55 @@ export default function ChatInterface() {
                 </div>
               </DialogContent>
             </Dialog>
-
-            <input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Message"
-              className="flex-1 bg-[#1d1d1d] border-none outline-none rounded-lg p-2 px-4 focus-visible:ring-0 text-[#dbdee1] placeholder:text-zinc-500"
-            />
-
-            <Button
-              type="submit"
-              size="icon"
-              variant="ghost"
-              className="hover:bg-[#1d1d1d] text-zinc-400 hover:text-white"
-            >
-              <SendHorizontal className="w-5 h-5" />
-            </Button>
-          </form>
+            <p className="text-white font-bold">
+              {user ? getOtherUser(chatId, user.username) : ""}
+            </p>
+          </div>
         </div>
+      </nav>
+      <div className="flex flex-col h-screen bg-black text-[#dbdee1] ">
+        <ScrollArea className="flex-1 px-4 pb-20 mt-15 bg-black ">
+          <div className="py-6">
+            {groupMessage()}
+            <div ref={scrollRef} />
+          </div>
+        </ScrollArea>
+      </div>
+      <div className="fixed bottom-0 w-screen mt-30">
+        <form
+          onSubmit={handleSend}
+          className="flex items-center gap-2 bg-[#111111] rounded-lg px-4 py-2 shadow-inner"
+        >
+          <button
+            type="button"
+            onClick={() => document.getElementById("fileInput")?.click()}
+            className="text-zinc-400 hover:text-zinc-200"
+          >
+            <PlusCircle className="w-6 h-6" />
+          </button>
+          <input
+            id="fileInput"
+            type="file"
+            hidden
+            accept="image/*,video/*"
+            onChange={handleFileUpload}
+          />
+          <input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Message"
+            className="flex-1 bg-[#1d1d1d] border-none outline-none rounded-lg p-2 px-4 focus-visible:ring-0 text-[#dbdee1] placeholder:text-zinc-500"
+          />
+
+          <Button
+            type="submit"
+            size="icon"
+            variant="ghost"
+            className="hover:bg-[#1d1d1d] text-zinc-400 hover:text-white"
+          >
+            <SendHorizontal className="w-5 h-5" />
+          </Button>
+        </form>
       </div>
     </>
   );

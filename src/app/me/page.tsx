@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/firebase";
-import { getChats, makeChat } from "@/lib/friends";
+import { getChats, makeChat } from "@/lib/api";
 import { onAuthStateChanged } from "firebase/auth";
 
 import { UserPlus } from "lucide-react";
